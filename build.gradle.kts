@@ -142,7 +142,7 @@ dependencies {
     implementation(openrndr("animatable"))
     implementation(openrndr("extensions"))
     implementation(openrndr("filter"))
-
+    implementation(openrndr("dialogs"))
     implementation("org.jetbrains.kotlinx", "kotlinx-coroutines-core","1.3.7")
     implementation("io.github.microutils", "kotlin-logging","1.7.10")
 
