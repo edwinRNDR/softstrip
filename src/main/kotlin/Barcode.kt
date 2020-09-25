@@ -1,4 +1,3 @@
-import kotlin.math.ceil
 // based on https://github.com/FozzTexx/Distripitor/blob/master/Barcode.m
 
 @ExperimentalUnsignedTypes
@@ -48,9 +47,6 @@ class Barcode(val data: ByteArray, val density: Int = 4) {
 
     init {
         val pxw = stripWidth / pixelWidth
-        if (pxw < MINBITWIDTH_MM) {
-            error("kak")
-        }
     }
 
     val pxbuf = ByteArray(pixelWidth)
@@ -75,8 +71,8 @@ class Barcode(val data: ByteArray, val density: Int = 4) {
             for (j in 0 until 8) {
                 byte = byte shl 1
                 if (i + j < pixelWidth) {
-                    require(pxbuf[i+j]<2)
-                    byte = byte or (1-pxbuf[i + j]).toInt()
+                    require(pxbuf[i + j] < 2)
+                    byte = byte or (1 - pxbuf[i + j]).toInt()
                 }
             }
             bitmap[offset + i / 8] = byte.toByte()
@@ -137,16 +133,16 @@ class Barcode(val data: ByteArray, val density: Int = 4) {
         }
         for (i in 0 until 2) {
             pxbuf[i] = 0
-            pxbuf[pixelWidth -4 + i] = 0
+            pxbuf[pixelWidth - 4 + i] = 0
         }
         for (i in 0 until 6) {
             pxbuf[4 + i] = 0
             pxbuf[pixelWidth - 12 + i] = 0
         }
-        for (i in 0 until density -4) {
-            pxbuf[12 + i * 4] = pxbuf[13+i *4]
+        for (i in 0 until density - 4) {
+            pxbuf[12 + i * 4] = pxbuf[13 + i * 4]
             pxbuf[pixelWidth - 16 - i * 4] = 0
-            pxbuf[pixelWidth -15 - i * 4] = 0
+            pxbuf[pixelWidth - 15 - i * 4] = 0
         }
         val len0 = 4 //ceil(2.0 / bitHeight).toInt()
         for (i in 0 until len0) {
@@ -157,8 +153,8 @@ class Barcode(val data: ByteArray, val density: Int = 4) {
         for (i in 0 until density * 4 step 8) {
             var c = 0x80
             for (clen in 0 until 8) {
-                pxbuf[(i+clen)*2+7] = (c and 1).toByte()
-                pxbuf[(i+clen)*2+8] = (1-pxbuf[(i+clen)*2+7]).toByte()
+                pxbuf[(i + clen) * 2 + 7] = (c and 1).toByte()
+                pxbuf[(i + clen) * 2 + 8] = (1 - pxbuf[(i + clen) * 2 + 7]).toByte()
                 c = c shr 1
             }
         }

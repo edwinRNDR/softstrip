@@ -9,6 +9,9 @@ import org.openrndr.panel.style.*
 import org.openrndr.shape.CompositionDrawer
 import org.openrndr.shape.Rectangle
 import org.openrndr.svg.saveToFile
+import kotlin.experimental.xor
+import kotlin.math.max
+import kotlin.math.min
 
 fun main() = application {
     configure {
@@ -22,6 +25,12 @@ fun main() = application {
         window.presentationMode = PresentationMode.MANUAL
         val state = object {
             var offsetY = 0.0
+
+            var xor = 0
+                set(value) {
+                    field = value
+                    generateBarcode()
+                }
 
             var density = 2
                 set(value) {
@@ -41,6 +50,11 @@ fun main() = application {
                     generateBarcode()
                 }
 
+            fun xorArray(data: ByteArray, y:Int): ByteArray {
+                println("xorring with $y")
+                return ByteArray(data.size) { data[it] xor y.toByte()}
+            }
+
             var barcode = Barcode(inputData, density = density * 2)
 
             init {
@@ -48,11 +62,12 @@ fun main() = application {
             }
 
             fun generateBarcode() {
-                barcode = Barcode(inputData, density = density * 2)
+                val procData = xorArray(inputData, xor)
+                barcode = Barcode(procData, density = density * 2)
                 if (addHeader) {
                     barcode.prependHeader()
                 }
-                for (i in inputData) {
+                for (i in procData) {
                     barcode.appendByte(i.toInt())
                 }
             }
@@ -63,7 +78,7 @@ fun main() = application {
             try {
                 state.inputData = f.readText().toByteArray(charset = Charsets.US_ASCII)
                 state.offsetY = 0.0
-            } catch(e :Throwable) {
+            } catch (e: Throwable) {
                 // TODO handle exceptions properly
                 e.printStackTrace()
             }
@@ -147,7 +162,10 @@ fun main() = application {
                                 val whiteRectangles = mutableListOf<Rectangle>()
                                 val blackRectangles = mutableListOf<Rectangle>()
 
-                                for (y in 0 until barcode.pxrow) {
+                                val startY = (-state.offsetY/rowHeight - 1).toInt()
+                                val endY = (-state.offsetY/rowHeight + height/rowHeight ).toInt()
+
+                                for (y in max(0, startY) until min(endY, barcode.pxrow)) {
                                     for (x in 0 until barcode.byteWidth) {
                                         val offset = y * barcode.byteWidth + x
                                         val v = barcode.bitmap[offset].toInt()
@@ -190,7 +208,7 @@ fun main() = application {
                                     try {
                                         state.inputData = it.readText().toByteArray(charset = Charsets.US_ASCII)
                                         state.offsetY = 0.0
-                                    } catch(e : Throwable) {
+                                    } catch (e: Throwable) {
                                         // TODO handle exceptions properly
                                         e.printStackTrace()
                                     }
@@ -208,12 +226,19 @@ fun main() = application {
                             range = Range(1.0, 4.0)
                             bind(state::density)
                         }
+//                        slider {
+//                            label = "xor"
+//                            precision = 0
+//                            range = Range(0.0, 255.0)
+//                            bind(state::xor)
+//                        }
                         div("spacer") {}
                         button {
                             label = "Export SVG"
                             clicked {
                                 val cd = CompositionDrawer()
                                 cd.apply {
+                                    stroke = null
                                     val barcode = state.barcode
                                     for (y in 0 until barcode.pxrow) {
                                         for (x in 0 until barcode.byteWidth) {
