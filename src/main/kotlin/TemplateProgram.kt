@@ -1,8 +1,8 @@
-import org.openrndr.PresentationMode
-import org.openrndr.application
+import org.openrndr.*
 import org.openrndr.color.ColorRGBa
 import org.openrndr.dialogs.openFileDialog
 import org.openrndr.dialogs.saveFileDialog
+import org.openrndr.events.Event
 import org.openrndr.panel.controlManager
 import org.openrndr.panel.elements.*
 import org.openrndr.panel.style.*
@@ -20,7 +20,6 @@ fun main() = application {
 
     program {
         window.presentationMode = PresentationMode.MANUAL
-
         val state = object {
             var offsetY = 0.0
 
@@ -61,7 +60,13 @@ fun main() = application {
 
         window.drop.listen {
             val f = it.files.first()
-            state.inputData = f.readText().toByteArray(charset = Charsets.US_ASCII)
+            try {
+                state.inputData = f.readText().toByteArray(charset = Charsets.US_ASCII)
+                state.offsetY = 0.0
+            } catch(e :Throwable) {
+                // TODO handle exceptions properly
+                e.printStackTrace()
+            }
         }
 
         val cm = controlManager {
@@ -109,12 +114,21 @@ fun main() = application {
                 div("container") {
                     div("inner-container") {
                         canvas {
-
+                            val rowHeight = 8.0
+                            listOf(this.keyboard.pressed, this.keyboard.repeated).listen {
+                                when (it.key) {
+                                    KEY_HOME -> state.offsetY = 0.0
+                                    KEY_ARROW_DOWN -> state.offsetY -= rowHeight
+                                    KEY_ARROW_UP -> state.offsetY += rowHeight
+                                    KEY_PAGE_DOWN -> state.offsetY -= (height - 40.0 - rowHeight)
+                                    KEY_PAGE_UP -> state.offsetY += (height - 40.0 - rowHeight)
+                                }
+                                requestRedraw()
+                            }
                             this.mouse.scrolled.listen {
-                                state.offsetY += it.rotation.y * 8.0
+                                state.offsetY += it.rotation.y * rowHeight
                                 it.cancelPropagation()
                                 requestRedraw()
-
                             }
                             this.mouse.pressed.listen {
                                 it.cancelPropagation()
@@ -124,11 +138,10 @@ fun main() = application {
                                 it.cancelPropagation()
                                 requestRedraw()
                             }
-
                             userDraw = { drawer ->
                                 val barcode = state.barcode
                                 drawer.clear(ColorRGBa.PINK)
-                                drawer.translate((width - barcode.byteWidth * 8 * 8) / 2.0, 8.0 + state.offsetY)
+                                drawer.translate((width - barcode.byteWidth * 8 * 8) / 2.0, rowHeight + state.offsetY)
                                 drawer.stroke = null
 
                                 val whiteRectangles = mutableListOf<Rectangle>()
@@ -143,9 +156,9 @@ fun main() = application {
                                                 blackRectangles.add(
                                                     Rectangle(
                                                         (x * 8 + (7 - i)) * 8.0,
-                                                        y * 8.0,
+                                                        y * rowHeight,
                                                         8.0,
-                                                        8.0
+                                                        rowHeight
                                                     )
                                                 )
                                             } else {
@@ -153,15 +166,14 @@ fun main() = application {
                                                 whiteRectangles.add(
                                                     Rectangle(
                                                         (x * 8 + (7 - i)) * 8.0,
-                                                        y * 8.0,
+                                                        y * rowHeight,
                                                         8.0,
-                                                        8.0
+                                                        rowHeight
                                                     )
                                                 )
                                             }
                                         }
                                     }
-
                                 }
                                 drawer.fill = ColorRGBa.WHITE
                                 drawer.rectangles(whiteRectangles)
@@ -175,7 +187,13 @@ fun main() = application {
                             label = "Import data"
                             clicked {
                                 openFileDialog {
-                                    state.inputData = it.readText().toByteArray(charset = Charsets.US_ASCII)
+                                    try {
+                                        state.inputData = it.readText().toByteArray(charset = Charsets.US_ASCII)
+                                        state.offsetY = 0.0
+                                    } catch(e : Throwable) {
+                                        // TODO handle exceptions properly
+                                        e.printStackTrace()
+                                    }
                                 }
                             }
                         }
@@ -224,5 +242,11 @@ fun main() = application {
             }
         }
         extend(cm)
+    }
+}
+
+fun <T> List<Event<T>>.listen(listener: (T) -> Unit) {
+    for (i in this) {
+        i.listen(listener)
     }
 }
